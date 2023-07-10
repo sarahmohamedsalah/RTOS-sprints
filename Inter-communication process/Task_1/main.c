@@ -80,9 +80,10 @@ TaskHandle_t ButtonTaskHandler = NULL;
 SemaphoreHandle_t xSemaphore; 
 
 
+uint16_t flag=0;
 uint8_t initial_state=0;
 pinState_t state;
-pinState_t LED_state;
+pinState_t LED_state=PIN_IS_LOW;
 
 /*
  * Configure the processor for use with the Keil demo board.  This is very
@@ -100,33 +101,30 @@ void LED_Task( void * pvParameters )
 	
     for( ;; )
     {
-			LED_state=(1 & ((IOPIN0)>>PIN0));
-      /* Task code goes here. */
-			if(state==PIN_IS_LOW)
-			{
+			
 			if(xSemaphoreTake(xSemaphore,(TickType_t)10)==pdTRUE)
-			{
-				
-				if(LED_state==PIN_IS_HIGH)
+			{ 
+      /* Task code goes here. */
+			
+				if(LED_state==PIN_IS_LOW)
 				{
 					GPIO_write(PORT_0,PIN0,PIN_IS_LOW);
-				}else if(LED_state==PIN_IS_LOW)
+				}else if(LED_state==PIN_IS_HIGH)
 				{
 					GPIO_write(PORT_0,PIN0,PIN_IS_HIGH);
 				}else
 				{
 				}
+				xSemaphoreGive(xSemaphore);
 			}else
 			{
 			}
-			}else
-			{
 			
-			}
 			
 
-		vTaskDelay(200);	
+		vTaskDelay(65);	
     }
+		
 }
 
 void Button_Task( void * pvParameters )
@@ -136,15 +134,33 @@ void Button_Task( void * pvParameters )
     for( ;; )
     {
       /* Task code goes here. */	
-		state=GPIO_read(PORT_0,PIN1);
+		if(xSemaphoreTake(xSemaphore,(TickType_t)10)==pdTRUE){
+					state=GPIO_read(PORT_0,PIN1);
+
+		if(state==PIN_IS_LOW)
+		{while((GPIO_read(PORT_0,PIN1)==PIN_IS_LOW));
 			
-		if(state==PIN_IS_HIGH)
-		{
+				
+				//vTaskDelay(50);
+				
+			
+			if(flag==0){
+				 flag=1;
+					LED_state=PIN_IS_HIGH;
+				}else if (flag ==1){
+				flag=0;
+					LED_state=PIN_IS_LOW;
+				}
+		//	initial_state=0;
 			//vTaskDelay(1);
-			xSemaphoreGive(xSemaphore);
 		}
-		vTaskDelay(100);
+		
+			xSemaphoreGive(xSemaphore);
+		}	else {
 		}		
+	vTaskDelay(50);
+		}	
+		
     
 }
 
@@ -164,14 +180,15 @@ int main( void )
 
     /* Create Tasks here */
 xSemaphore = xSemaphoreCreateBinary();
-	
+//give semaphore	
+	xSemaphoreGive(xSemaphore);
 	 /* Create the task, storing the handle. */
     xTaskCreate(
                     LED_Task,       /* Function that implements the task. */
                     "LED Task",          /* Text name for the task. */
                     100,      /* Stack size in words, not bytes. */
                     ( void * ) 0,    /* Parameter passed into the task. */
-                    1,/* Priority at which the task is created. */
+                    2,/* Priority at which the task is created. */
                     &LEDTaskHandler );      /* Used to pass out the created task's handle. */
 
     xTaskCreate(
